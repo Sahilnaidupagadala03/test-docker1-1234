@@ -13,8 +13,7 @@ Parameters:
     Default: 590183820639.dkr.ecr.<region>.amazonaws.com/test-docker-123:latest
 
   ExecutionRoleArn:
-    Type: String                      # ← ECSTaskExecutionRole
-    Description: IAM role the agent uses to pull image & send logs
+    Type: String                      # ← ECSTaskExecutionRol    Description: IAM role the agent uses to pull image & send logs
 
   TaskRoleArn:
     Type: String                      # ← Your app role (can be same as exec minimal)
