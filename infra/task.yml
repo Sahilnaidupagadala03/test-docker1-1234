@@ -1,0 +1,63 @@
+# infra/task.yml
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ECS Fargate Task Definition for hello‑web container
+
+Parameters:
+  TaskFamily:
+    Type: String
+    Default: hello-web
+    Description: Task definition family name
+
+  ContainerImage:
+    Type: String                      # ← passed from workflow; default here as fallback
+    Default: 590183820639.dkr.ecr.<region>.amazonaws.com/test-docker-123:latest
+
+  ExecutionRoleArn:
+    Type: String                      # ← ECSTaskExecutionRole
+    Description: IAM role the agent uses to pull image & send logs
+
+  TaskRoleArn:
+    Type: String                      # ← Your app role (can be same as exec if minimal)
+    Description: IAM role that the running container will assume
+
+  ContainerPort:
+    Type: Number
+    Default: 80
+    Description: Port exposed by the container
+
+Resources:
+  FargateTaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref TaskFamily
+      Cpu: "256"                      # 0.25 vCPU  (smallest Fargate size)
+      Memory: "512"                   # 0.5 GiB
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !Ref ExecutionRoleArn
+      TaskRoleArn:      !Ref TaskRoleArn
+      ContainerDefinitions:
+        - Name: web
+          Image: !Ref ContainerImage
+          PortMappings:
+            - ContainerPort: !Ref ContainerPort
+          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Sub "/ecs/${TaskFamily}"
+              awslogs-region: !Ref "AWS::Region"
+              awslogs-stream-prefix: ecs
+
+Outputs:
+  TaskDefinitionArn:
+    Description: ARN of the newly registered task definition
+    Value: !Ref FargateTaskDef
+    Export:
+      Name: !Sub "${AWS::StackName}-TaskDefinitionArn"
+
+  TaskFamily:
+    Description: Task family
+    Value: !Ref TaskFamily
+    Export:
+      Name: !Sub "${AWS::StackName}-TaskFamily"

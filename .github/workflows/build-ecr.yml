@@ -1,0 +1,51 @@
+name: Deploy ECR Stack
+
+on:
+  push:
+    paths:
+      - "infra/ecr.yml"
+      - ".github/workflows/deploy-ecr.yml"
+      - "scripts/save-outputs.sh"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION:   ${{ secrets.AWS_REGION }}
+  STACK_NAME:   ecr-stack               # change if you use a different name
+
+jobs:
+  deploy-ecr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region:     ${{ env.AWS_REGION }}
+
+      - name: Deploy ECR CloudFormation stack
+        run: |
+          aws cloudformation deploy \
+            --stack-name ${STACK_NAME} \
+            --template-file infra/ecr.yml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset
+
+      - name: Save outputs and push to S3
+        run: |
+          chmod +x scripts/save-outputs.sh
+          S3_BUCKET_NAME=${{ secrets.S3_BUCKET_NAME }} \
+          ./scripts/save-outputs.sh ${STACK_NAME}
+
+      - name: Upload outputs.txt as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecr-outputs
+          path: infra/outputs.txt

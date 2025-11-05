@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ECS Fargate Service for hello‑web task
+
+Parameters:
+  DesiredCount:
+    Type: Number
+    Default: 1
+    Description: How many tasks to run
+
+  ServiceName:
+    Type: String
+    Default: hello-web-svc
+    Description: ECS service name
+
+Resources:
+  ECSService:
+    Type: AWS::ECS::Service
+    DependsOn: ListenerRule                # ensures SG is ready before service starts
+    Properties:
+      ServiceName: !Ref ServiceName
+      Cluster:      !ImportValue ecs-cluster-stack-ECSClusterName
+      TaskDefinition: !ImportValue ecs-task-stack-TaskDefinitionArn
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !ImportValue ecs-cluster-stack-ECSSecurityGroupId
+          Subnets:
+            - !ImportValue my-vpc-stack-PublicSubnet1Id
+            - !ImportValue my-vpc-stack-PublicSubnet2Id
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 50
+
+  # (optional) Application Load Balancer pieces for HTTP access
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${ServiceName}-alb"
+      Scheme: internet-facing
+      Subnets:
+        - !ImportValue my-vpc-stack-PublicSubnet1Id
+        - !ImportValue my-vpc-stack-PublicSubnet2Id
+      SecurityGroups:
+        - !ImportValue ecs-cluster-stack-ECSSecurityGroupId
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      Protocol: HTTP
+      VpcId: !ImportValue my-vpc-stack-VpcId
+      TargetType: ip
+      HealthCheckPath: /
+      Matcher: { HttpCode: "200" }
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  ListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref Listener
+      Priority: 1
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      Conditions:
+        - Field: path-pattern
+          Values: ["/*"]
+
+Outputs:
+  ServiceName:
+    Value: !Ref ECSService
+    Export:
+      Name: !Sub "${AWS::StackName}-ServiceName"
+
+  LoadBalancerDNS:
+    Description: ALB DNS name
+    Value: !GetAtt LoadBalancer.DNSName
+    Export:
+      Name: !Sub "${AWS::StackName}-LoadBalancerDNS"
