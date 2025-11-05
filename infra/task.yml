@@ -17,7 +17,7 @@ Parameters:
     Description: IAM role the agent uses to pull image & send logs
 
   TaskRoleArn:
-    Type: String                      # ← Your app role (can be same as exec if minimal)
+    Type: String                      # ← Your app role (can be same as exec minimal)
     Description: IAM role that the running container will assume
 
   ContainerPort:
