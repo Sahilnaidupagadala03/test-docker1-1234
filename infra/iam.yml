@@ -13,7 +13,7 @@ Parameters:
     Default: ECSTaskRole            # role your containers assume
   InstanceRoleName:
     Type: String
-    Default: ECSInstanceRole        # role attached to EC2 hosts
+    Default: ECSInstanceRole       
 
 # ─────────────────────────────────────────────
 # Resources
