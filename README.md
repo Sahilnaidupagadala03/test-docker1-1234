@@ -1,5 +1,5 @@
 🔹 Project Overview
-
+    rpe
 This project is a CI/CD pipeline with GitHub Actions to deploy a containerized application into AWS ECS (EC2 launch type).
 It combines infrastructure as code (CloudFormation/YAML), Docker, and automation scripts for a complete deployment flow.
 
